@@ -1,2 +1,2 @@
-# rabbitmq-dummy-worker
+# RabbitMQ Dummy Worker
 A dummy main-worker configuration enabled via a RabbitMQ based message queue to enabled efficient parallelization of independantly executable tasks

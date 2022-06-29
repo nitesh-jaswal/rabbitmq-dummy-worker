@@ -1,0 +1,14 @@
+version: '3.7'
+services:
+  redis:
+    container_name: dummy_redis
+    image: redis:latest
+    volumes:
+      - /data/projects/rabbitmq-dummy-worker/redis/:/data/
+    ports:
+      - "6379:6379"
+  rabbitmq:
+    container_name: dummy_rabbitmq
+    image: rabbitmq:latest
+    ports: 
+      - "5672:5672"
