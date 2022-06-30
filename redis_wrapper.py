@@ -73,7 +73,7 @@ class WorkerRedisHandler(BaseRedisHandler):
             if self.retry_number <= WorkerRedisHandler.MAX_RETRY:
                 print(f"ConnectionError: Re-establishing connection and retrying. Retry number {self.retry_number}")
                 self.retry_number += 1
-                self.client.client_kill()
+                self.close()
                 self.client = self._get_client()
                 return self.publish_data(msg)
             return False

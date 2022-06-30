@@ -40,7 +40,6 @@ class RabbitMQPublisher:
             delivery_mode=pika.spec.PERSISTENT_DELIVERY_MODE
             )
         )
-        # print("Sent Message: ", msg)
 
 class RabbitMQConsumer:
     def __init__(
