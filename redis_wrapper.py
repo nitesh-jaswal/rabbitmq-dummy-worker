@@ -2,9 +2,7 @@ import redis
 from json import dumps
 from typing import Dict, List
 
-class MainRedisHandler:
-    MAX_RETRY: int = 1
-
+class BaseRedisHandler:
     def __init__(
          self,
          host: str,
@@ -15,8 +13,7 @@ class MainRedisHandler:
         self.port = port
         self.password = password
         self.client = self._get_client()
-        self.retry_number = 0
-        
+            
     def __enter__(self):
         return self
     
@@ -33,12 +30,22 @@ class MainRedisHandler:
     def close(self):
         self.client.close()
 
+class MainRedisHandler(BaseRedisHandler):
+
+    def __init__(
+        self,
+        host: str,
+        port: str,
+        password: str
+    ):
+        super().__init__(host, port, password)
+    
     def completed(self, task_id: str) -> int:
         return self.client.llen(task_id)
     
     def get_result(self, task_id: str) -> List:
         return self.client.lrange(task_id, 0, -1)
-class WorkerRedisHandler:
+class WorkerRedisHandler(BaseRedisHandler):
     MAX_RETRY: int = 1
 
     def __init__(
@@ -47,27 +54,8 @@ class WorkerRedisHandler:
          port: str,
          password: str
     ):
-        self.host = host
-        self.port = port
-        self.password = password
-        self.client = self._get_client()
+        super().__init__(host, port, password)
         self.retry_number = 0
-        
-    def __enter__(self):
-        return self
-    
-    def __exit__(self, *args):
-        self.close()
-    
-    def _get_client(self):
-        return redis.Redis(
-            host=self.host,
-            port=self.port,
-            password=self.password
-        )
-
-    def close(self):
-        self.client.close()
     
     # Currently using a List data structure. A set could also be suitable
     def publish_data(

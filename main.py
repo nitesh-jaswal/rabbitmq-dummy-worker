@@ -18,7 +18,7 @@ redishandler = MainRedisHandler(
 )
 
 def _create_dummy_task(task_id: str, serial_number: int):
-    delay = random.randint(1, 60)
+    delay = random.randint(1, 5)
     return {
         'serial_number': serial_number,
         'delay': delay,
@@ -40,18 +40,19 @@ def _execute_tasks(number_of_tasks: int) -> Dict[str, Any]:
         success_tasks=0, 
         failed_tasks=0
     )
-    task_generator = (_create_dummy_task(task_id, i) for i in range(number_of_tasks))
+    task_list = list(_create_dummy_task(task_id, i) for i in range(number_of_tasks))
+    print(f"Debug: Combined delay time for all tasks={sum(x['delay'] for x in task_list)}")
     with RabbitMQPublisher(cfg.TASK_QUEUE_NAME) as rqpublisher:
-        for task in task_generator:
-            print("Queing Task: ", task)
+        for task in task_list:
+            # print("Queing Task: ", task)
             msg = dumps(task)
             rqpublisher.publish_message(msg)
         completed = 0
         while completed < number_of_tasks:
-            completed = redishandler.completed(task_id)
             print(f"Polling for completion. Completed {completed}/{number_of_tasks}")
             print(f"Sleeping for 10 seconds")
             time.sleep(10)
+            completed = redishandler.completed(task_id)
         print(f"Response received from all tasks. Compiling result")
         for res in map(lambda x: loads(x), redishandler.get_result(task_id)):
             if res["success"]:

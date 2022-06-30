@@ -37,10 +37,10 @@ class RabbitMQPublisher:
             routing_key=self.queue_name,
             body=msg,
             properties=pika.BasicProperties(
-                delivery_mode=pika.spec.PERSISTENT_DELIVERY_MODE
+            delivery_mode=pika.spec.PERSISTENT_DELIVERY_MODE
             )
         )
-        print("Sent Message: ", msg)
+        # print("Sent Message: ", msg)
 
 class RabbitMQConsumer:
     def __init__(
