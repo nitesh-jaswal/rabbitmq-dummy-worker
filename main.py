@@ -3,17 +3,22 @@ import argparse
 import random
 import time
 from uuid import uuid4
-from json import dumps
+from json import dumps, loads
 from typing import Dict, Any
 from config import get_config
 from rabbitmq_wrapper import RabbitMQPublisher
+from redis_wrapper import MainRedisHandler
 
 _MAX_TASKS: int = 100
 cfg = get_config()
+redishandler = MainRedisHandler(
+    host=cfg.REDIS_BROKER,
+    port=cfg.REDIS_PORT,
+    password=cfg.REDIS_PASS
+)
 
-def _create_dummy_task(serial_number: int):
+def _create_dummy_task(task_id: str, serial_number: int):
     delay = random.randint(1, 60)
-    task_id = str(uuid4())    
     return {
         'serial_number': serial_number,
         'delay': delay,
@@ -29,18 +34,30 @@ def _execute_tasks(number_of_tasks: int) -> Dict[str, Any]:
         susccess_tasks => int : Total number of successfull tasks
         failed_tasks => int : Total number of failed tasks
     """
+    task_id = str(uuid4())    
     result = dict(
         total_tasks=number_of_tasks, 
         success_tasks=0, 
         failed_tasks=0
     )
-    task_generator = (_create_dummy_task(i) for i in range(number_of_tasks))
+    task_generator = (_create_dummy_task(task_id, i) for i in range(number_of_tasks))
     with RabbitMQPublisher(cfg.TASK_QUEUE_NAME) as rqpublisher:
         for task in task_generator:
             print("Queing Task: ", task)
             msg = dumps(task)
             rqpublisher.publish_message(msg)
-    
+        completed = 0
+        while completed < number_of_tasks:
+            completed = redishandler.completed(task_id)
+            print(f"Polling for completion. Completed {completed}/{number_of_tasks}")
+            print(f"Sleeping for 10 seconds")
+            time.sleep(10)
+        print(f"Response received from all tasks. Compiling result")
+        for res in map(lambda x: loads(x), redishandler.get_result(task_id)):
+            if res["success"]:
+                result["success_tasks"] += 1
+            else:
+                result["failed_tasks"] += 1    
     # Poll for completion with status
     return result
 
@@ -58,7 +75,8 @@ if __name__ == "__main__":
     start = time.perf_counter()
     result = _execute_tasks(number_of_tasks)
     stop = time.perf_counter()
-
+    
+    redishandler.close()
     print(f"Result: {result}")
     print(f"Time Taken: {stop - start}s")
 
